@@ -1,15 +1,16 @@
 import express, { type Request, Response, NextFunction } from "express";
-import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, log } from "./vite";
+import path from "path";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Middleware to log the API requests
 app.use((req, res, next) => {
   const start = Date.now();
-  const pathReq = req.path;
+  const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined;
 
   const originalResJson = res.json;
@@ -20,8 +21,8 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (pathReq.startsWith("/api")) {
-      let logLine = `${req.method} ${pathReq} ${res.statusCode} in ${duration}ms`;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
@@ -35,9 +36,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files and add catch-all route for React in production
+// Static file serving for production
 function serveStatic(app: express.Express) {
-  const distPath = path.join(__dirname, "dist");
+  // Use import.meta.url to get the current directory path
+  const distPath = path.join(new URL('.', import.meta.url).pathname, "dist");
   app.use(express.static(distPath));
 
   app.get("*", (_req, res) => {
@@ -48,6 +50,7 @@ function serveStatic(app: express.Express) {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -55,23 +58,20 @@ function serveStatic(app: express.Express) {
     throw err;
   });
 
+  // Set up Vite in development mode, or serve static in production
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Start the server
+  // Server listen - the only place to start listening!
   const port = Number(process.env.PORT) || 5000;
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    }
-  );
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
 })();
-
