@@ -1,49 +1,15 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { registerRoutes } from "./routes";  // adjust if your routes file path differs
-import { setupVite, serveStatic as serveStaticDev } from "./vite"; // adjust imports if needed
-import { log } from "./vite"; // your log function
 
+// Fix for __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
-// Logging middleware (optional, from your previous code)
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-      log(logLine);
-    }
-  });
-
-  next();
-});
-
-// Serve static files in production
 function serveStatic(app: express.Express) {
-  const distPath = path.join(__dirname, "../dist/public");
+  const distPath = path.join(__dirname, "dist/public"); // Adjust if your build output folder differs
   app.use(express.static(distPath));
 
   app.get("*", (_req, res) => {
@@ -51,10 +17,20 @@ function serveStatic(app: express.Express) {
   });
 }
 
+// Example: your registerRoutes and setupVite functions here, or import them
+async function registerRoutes(app: express.Express) {
+  // Register your API routes here
+  // e.g. app.use('/api', apiRouter)
+  return app;
+}
+
+async function setupVite(app: express.Express, server: any) {
+  // Setup Vite dev server integration here
+}
+
 (async () => {
   const server = await registerRoutes(app);
 
-  // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -68,15 +44,8 @@ function serveStatic(app: express.Express) {
     serveStatic(app);
   }
 
-  const port = Number(process.env.PORT) || 5000;
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`Server running on port ${port}`);
-    },
-  );
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
 })();
