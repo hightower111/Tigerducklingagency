@@ -3,13 +3,18 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-// ⚠️ No async plugins like cartographer for now — will break config if not handled right
-
 export default defineConfig({
-  root: path.resolve(__dirname, "."), // Explicitly use the root folder
+  root: path.resolve(__dirname), // use root folder (where index.html is)
   plugins: [
     react(),
     runtimeErrorOverlay(),
+    ...(process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
+      ? [
+          await import("@replit/vite-plugin-cartographer").then((m) =>
+            m.cartographer()
+          ),
+        ]
+      : []),
   ],
   resolve: {
     alias: {
@@ -19,13 +24,13 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "dist/public"), // Where built files go
+    outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
   },
   server: {
     fs: {
       strict: true,
-      deny: ["**/.*"], // Deny hidden files (security)
+      deny: ["**/.*"],
     },
   },
 });
