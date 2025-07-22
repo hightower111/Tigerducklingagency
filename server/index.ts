@@ -1,13 +1,18 @@
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite";
+import express, { Request, Response, NextFunction } from "express";
 import path from "path";
+import { fileURLToPath } from "url";
+import { registerRoutes } from "./routes";  // adjust if your routes file path differs
+import { setupVite, serveStatic as serveStaticDev } from "./vite"; // adjust imports if needed
+import { log } from "./vite"; // your log function
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Middleware to log the API requests
+// Logging middleware (optional, from your previous code)
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -36,10 +41,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static file serving for production
+// Serve static files in production
 function serveStatic(app: express.Express) {
-  // Use import.meta.url to get the current directory path
-  const distPath = path.join(new URL('.', import.meta.url).pathname, "dist");
+  const distPath = path.join(__dirname, "../dist/public");
   app.use(express.static(distPath));
 
   app.get("*", (_req, res) => {
@@ -58,20 +62,21 @@ function serveStatic(app: express.Express) {
     throw err;
   });
 
-  // Set up Vite in development mode, or serve static in production
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Server listen - the only place to start listening!
   const port = Number(process.env.PORT) || 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`Server running on port ${port}`);
+    },
+  );
 })();
