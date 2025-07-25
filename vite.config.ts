@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig(() => {
   return {
+    base: "./", // Ensures assets load correctly in Netlify production
     plugins: [react()],
     resolve: {
       alias: {
@@ -17,5 +18,3 @@ export default defineConfig(() => {
     },
   };
 });
-
-
